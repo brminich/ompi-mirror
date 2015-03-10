@@ -55,7 +55,10 @@ mca_spml_ucx_t mca_spml_ucx = {
         NULL, //mca_spml_ucx_send,
         mca_spml_base_wait,
         mca_spml_base_wait_nb,
-        mca_spml_ucx_fence,
+        mca_spml_ucx_quiet, /* At the moment fence is the same as quite for 
+                               every spml */
+        mca_spml_ucx_rmkey_unpack,
+        mca_spml_ucx_rmkey_free,
         (void*)&mca_spml_ucx
     }
 };
@@ -127,6 +130,45 @@ bail:
     SPML_ERROR("add procs FAILED rc=%d", rc);
     return rc;
 
+}
+
+void mca_spml_ucx_rmkey_free(sshmem_mkey_t *mkey)
+{
+    spml_ucx_mkey_t   *ucx_mkey;
+
+    if (!mkey->spml_context) {
+        return;
+    }
+    ucx_mkey = (spml_ucx_mkey_t *)(mkey->spml_context);
+    ucp_rkey_destroy(ucx_mkey->rkey);
+    free(ucx_mkey);
+}
+
+void mca_spml_ucx_rmkey_unpack(sshmem_mkey_t *mkey)
+{
+    spml_ucx_mkey_t   *ucx_mkey;
+    ucs_status_t err;
+
+    ucx_mkey = (spml_ucx_mkey_t *)malloc(sizeof(*ucx_mkey));
+    if (!ucx_mkey) {
+        SPML_ERROR("not enough memory to allocate mkey");
+        goto error_fatal;
+    }
+    
+    err = ucp_rkey_unpack(mca_spml_ucx.ucp_context, mkey->u.data, 
+            &ucx_mkey->rkey); 
+    if (UCS_OK != err) {
+        SPML_ERROR("failed to unpack rkey");
+        goto error_fatal;
+    }
+
+    mkey->spml_context = ucx_mkey;
+
+    return;
+
+error_fatal:
+    oshmem_shmem_abort(-1);
+    return;
 }
 
 sshmem_mkey_t *mca_spml_ucx_register(void* addr,
