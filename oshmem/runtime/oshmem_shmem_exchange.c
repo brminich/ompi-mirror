@@ -35,6 +35,26 @@ int oshmem_shmem_allgatherv(void *send_buf, void* rcv_buf, int send_count,
     return rc;
 }
 
+int oshmem_shmem_allreduce(void *send_buf, int send_count, void *rcv_buf, MPI_Datatype datatype, MPI_Op op)
+{
+    int rc;
+
+    rc = MPI_Allreduce(send_buf, rcv_buf, send_count, 
+            datatype, op, oshmem_comm_world);
+    return rc;
+
+}
+
+int oshmem_shmem_alltoall(void *send_buf, int send_count,
+                void *rcv_buf, int rcv_count)
+{
+    int rc;
+
+    rc = MPI_Alltoall(send_buf, send_count, MPI_BYTE,
+            rcv_buf, rcv_count, MPI_BYTE, oshmem_comm_world);
+    return rc;
+}
+
 void oshmem_shmem_barrier(void)
 {
     MPI_Barrier(oshmem_comm_world);

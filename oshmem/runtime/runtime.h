@@ -123,6 +123,12 @@ OSHMEM_DECLSPEC int oshmem_shmem_allgatherv(void *send_buf, void* rcv_buf, int s
  */
 OSHMEM_DECLSPEC void oshmem_shmem_barrier(void);
 
+/* all reduce */
+OSHMEM_DECLSPEC int oshmem_shmem_allreduce(void *send_buf, int send_count, void *rcv_buf, MPI_Datatype datatype, MPI_Op op);
+
+/* all to all */
+OSHMEM_DECLSPEC int oshmem_shmem_alltoall(void *send_buf, int send_count,
+        void *rcv_buf, int rcv_count);
 /**
  * Register OSHMEM specific runtime parameters
  */

@@ -88,7 +88,9 @@ int mca_spml_ucx_del_procs(oshmem_proc_t** procs, size_t nprocs)
 
      for (n = 0; n < nprocs; n++) {
          i = (my_rank + n) % nprocs;
-         ucp_ep_destroy(mca_spml_ucx.ucp_peers[i].ucp_conn);
+         if (mca_spml_ucx.ucp_peers[i].ucp_conn) {
+             ucp_ep_destroy(mca_spml_ucx.ucp_peers[i].ucp_conn);
+         }
      }
 
     free(mca_spml_ucx.ucp_peers);
@@ -100,33 +102,95 @@ int mca_spml_ucx_add_procs(oshmem_proc_t** procs, size_t nprocs)
     size_t i, n;
     int rc = OSHMEM_ERROR;
     int my_rank = oshmem_my_proc_id();
+    ucs_status_t err;
+    ucp_iface_attr_t attr;
+    ucp_ep_addr_t *ep_local_addrs;
+    char *ep_remote_addrs;
+    int ep_raddr_len;
 
 
-    mca_spml_ucx.ucp_peers = (ucp_peer_t *) malloc(nprocs * sizeof(*(mca_spml_ucx.ucp_peers)));
+    mca_spml_ucx.ucp_peers = (ucp_peer_t *) calloc(nprocs, sizeof(*(mca_spml_ucx.ucp_peers)));
     if (NULL == mca_spml_ucx.ucp_peers) {
-        rc = OSHMEM_ERR_OUT_OF_RESOURCE;
-        goto bail;
+        goto error;
     }
 
-    /* TODO: ep address exchange 
-    oshmem_shmem_allgather(&my_ep_info, ep_info,
-                           sizeof(spml_ikrit_mxm_ep_conn_info_t));
-                           */
+    err = ucp_iface_query(mca_spml_ucx.ucp_iface, &attr);
+    if (UCS_OK != err) {
+        goto error2;
+    }
+
+
+    ep_local_addrs = (ucp_ep_addr_t *)malloc(attr.ep_addr_len*nprocs);
+    if (!ep_local_addrs) {
+        goto error2;
+    }
+
+    rc = oshmem_shmem_allreduce(&attr.ep_addr_len, 1, &ep_raddr_len,
+            MPI_INT, MPI_MAX);
+    if (MPI_SUCCESS != rc) {
+        SPML_ERROR("allreduce failed");
+        oshmem_shmem_abort(-1);
+        goto error3;
+    }
+
+
+    ep_remote_addrs = (char *)malloc(ep_raddr_len*nprocs);
+    if (!ep_remote_addrs) {
+        goto error3;
+    }
+
+    for (i = 0; i < nprocs; ++i) {
+        err = ucp_ep_create(mca_spml_ucx.ucp_iface, 
+                &mca_spml_ucx.ucp_peers[i].ucp_conn);
+        if (UCS_OK != err) {
+            goto error5;
+        }
+
+        ucp_ep_pack_address(mca_spml_ucx.ucp_peers[i].ucp_conn,
+                ep_local_addrs + i);
+    }
+    
+    rc = oshmem_shmem_alltoall(ep_local_addrs, attr.ep_addr_len, 
+                               ep_remote_addrs, ep_raddr_len);
+    if (MPI_SUCCESS != rc) {
+        SPML_ERROR("alltoall failed");
+        oshmem_shmem_abort(-1);
+        goto error5;
+    }
 
     opal_progress_register(spml_ucx_progress);
 
     /* Get the EP connection requests for all the processes from modex */
     for (n = 0; n < nprocs; ++n) {
-
         i = (my_rank + n) % nprocs;
         mca_spml_ucx.ucp_peers[i].pe = i;
-        /* TODO connect ep to ep */
+
+        err = ucp_ep_connect_to_ep(mca_spml_ucx.ucp_peers[i].ucp_conn, 
+                (ucp_ep_addr_t *)(ep_remote_addrs + i*ep_raddr_len));
+        if (UCS_OK != err) {
+            goto error5;
+        }
     }
 
+    free(ep_remote_addrs);
+    free(ep_local_addrs);
     SPML_VERBOSE(50, "*** ADDED PROCS ***");
     return OSHMEM_SUCCESS;
 
-bail:
+error5:
+    for (i = 0; i < nprocs; ++i) {
+         if (mca_spml_ucx.ucp_peers[i].ucp_conn) {
+             ucp_ep_destroy(mca_spml_ucx.ucp_peers[i].ucp_conn);
+         }
+    }
+error4:
+    free(ep_remote_addrs);
+error3:
+    free(ep_local_addrs);
+error2:
+    free(mca_spml_ucx.ucp_peers);
+error:
+    rc = OSHMEM_ERR_OUT_OF_RESOURCE;
     SPML_ERROR("add procs FAILED rc=%d", rc);
     return rc;
 
