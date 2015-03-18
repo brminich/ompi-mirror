@@ -34,7 +34,6 @@ BEGIN_C_DECLS
  */
 struct ucp_peer {
     ucp_ep_h        ucp_conn;
-    int             pe;
 };
 
 typedef struct ucp_peer ucp_peer_t;
@@ -47,7 +46,6 @@ struct mca_spml_ucx {
 
     int                      priority; /* component priority */
     bool                     enabled;
-    int                      np;
 };
 
 typedef struct mca_spml_ucx mca_spml_ucx_t;

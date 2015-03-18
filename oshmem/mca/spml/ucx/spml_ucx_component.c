@@ -99,17 +99,6 @@ static int mca_spml_ucx_component_register(void)
                                       "[integer] ucx priority",
                                       &mca_spml_ucx.priority);
 
-     mca_spml_ucx_param_register_int("np",
-                                           0,
-                                           "[integer] Minimal allowed job's NP to activate ucx", &mca_spml_ucx.np);
-
-    if (oshmem_num_procs() < mca_spml_ucx.np) {
-        SPML_VERBOSE(1,
-                     "Not enough ranks (%d<%d), disqualifying spml/ucx",
-                     oshmem_num_procs(), mca_spml_ucx.np);
-        return OSHMEM_ERR_NOT_AVAILABLE;
-    }
-
     return OSHMEM_SUCCESS;
 }
 

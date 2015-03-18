@@ -370,8 +370,8 @@ int mca_spml_ucx_put(void* dst_addr, size_t size, void* src_addr, int dst)
 int mca_spml_ucx_fence(void)
 {
     ucs_status_t err;
-    ucp_fence(mca_spml_ucx.ucp_context);
 
+    err = ucp_fence(mca_spml_ucx.ucp_context);
     if (UCS_OK != err) {
         SPML_ERROR("fence failed");
          oshmem_shmem_abort(-1);
@@ -383,8 +383,8 @@ int mca_spml_ucx_fence(void)
 int mca_spml_ucx_quiet(void)
 {
     ucs_status_t err;
-    ucp_fence(mca_spml_ucx.ucp_context);
 
+    err = ucp_fence(mca_spml_ucx.ucp_context);
     if (UCS_OK != err) {
         SPML_ERROR("fence failed");
          oshmem_shmem_abort(-1);
