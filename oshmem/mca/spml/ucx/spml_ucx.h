@@ -41,7 +41,7 @@ typedef struct ucp_peer ucp_peer_t;
 struct mca_spml_ucx {
     mca_spml_base_module_t   super;
     ucp_context_h            ucp_context;
-    ucp_iface_h              ucp_iface;
+    ucp_worker_h             ucp_worker;
     ucp_peer_t              *ucp_peers;
 
     int                      priority; /* component priority */
@@ -51,8 +51,8 @@ struct mca_spml_ucx {
 typedef struct mca_spml_ucx mca_spml_ucx_t;
 
 struct spml_ucx_mkey {
-    ucp_lkey_h lkey;
     ucp_rkey_h rkey;
+    ucp_mem_h  mem_h;
 }; 
 
 typedef struct spml_ucx_mkey spml_ucx_mkey_t;
@@ -94,7 +94,7 @@ extern sshmem_mkey_t *mca_spml_ucx_register(void* addr,
                                                 int *count);
 extern int mca_spml_ucx_deregister(sshmem_mkey_t *mkeys);
 
-extern void mca_spml_ucx_rmkey_unpack(sshmem_mkey_t *mkey);
+extern void mca_spml_ucx_rmkey_unpack(sshmem_mkey_t *mkey, int pe);
 extern void mca_spml_ucx_rmkey_free(sshmem_mkey_t *mkey);
 
 extern int mca_spml_ucx_add_procs(oshmem_proc_t** procs, size_t nprocs);

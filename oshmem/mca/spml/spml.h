@@ -113,7 +113,7 @@ typedef int (*mca_spml_base_module_wait_fn_t)(void* addr,
  *
  * @param mkey remote mkey
  */
-typedef void (*mca_spml_base_module_mkey_unpack_fn_t)(sshmem_mkey_t *);
+typedef void (*mca_spml_base_module_mkey_unpack_fn_t)(sshmem_mkey_t *, int remote_pe);
 
 /**
  * free resources used by deserialized remote mkey

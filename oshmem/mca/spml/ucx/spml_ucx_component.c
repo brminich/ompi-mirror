@@ -104,15 +104,22 @@ static int mca_spml_ucx_component_register(void)
 
 int spml_ucx_progress(void)
 {
-    ucp_progress(mca_spml_ucx.ucp_context);
+    ucp_worker_progress(mca_spml_ucx.ucp_worker);
     return 1;
 }
 
 static int mca_spml_ucx_component_open(void)
 {
     ucs_status_t err;
+    ucp_config_t *ucp_config;
 
-    err = ucp_init(&mca_spml_ucx.ucp_context);
+    err = ucp_config_read("OSHMEM", NULL, &ucp_config);
+    if (UCS_OK != err) {
+        return OSHMEM_ERROR;
+    }
+
+    err = ucp_init(ucp_config, 0, &mca_spml_ucx.ucp_context);
+    ucp_config_release(ucp_config);
     if (UCS_OK != err) {
         return OSHMEM_ERROR;
     }
@@ -130,7 +137,7 @@ static int spml_ucx_init(void)
 {
     ucs_status_t err;
 
-    err = ucp_iface_create(mca_spml_ucx.ucp_context, "OSHMEM", &mca_spml_ucx.ucp_iface);
+    err = ucp_worker_create(mca_spml_ucx.ucp_context, UCS_THREAD_MODE_SINGLE, &mca_spml_ucx.ucp_worker);
     if (UCS_OK != err) {
         return OSHMEM_ERROR;
     }
@@ -162,8 +169,8 @@ static int mca_spml_ucx_component_fini(void)
 {
     opal_progress_unregister(spml_ucx_progress);
         
-    if (mca_spml_ucx.ucp_iface) {
-        ucp_iface_close(mca_spml_ucx.ucp_iface);
+    if (mca_spml_ucx.ucp_worker) {
+        ucp_worker_destroy(mca_spml_ucx.ucp_worker);
     }
     if(!mca_spml_ucx.enabled)
         return OSHMEM_SUCCESS; /* never selected.. return success.. */
