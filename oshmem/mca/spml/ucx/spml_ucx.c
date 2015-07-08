@@ -377,7 +377,7 @@ int mca_spml_ucx_get(void *src_addr, size_t size, void *dst_addr, int src)
     spml_ucx_mkey_t *ucx_mkey;
 
     r_mkey = mca_memheap_base_get_cached_mkey(src, src_addr, 0, &rva);
-    if (!r_mkey) {
+    if (OPAL_UNLIKELY(!r_mkey)) {
         SPML_ERROR("pe=%d: %p is not address of shared variable",
                 src, src_addr);
         oshmem_shmem_abort(-1);
@@ -388,7 +388,7 @@ int mca_spml_ucx_get(void *src_addr, size_t size, void *dst_addr, int src)
     err = ucp_rma_get(mca_spml_ucx.ucp_peers[src].ucp_conn, dst_addr, size, 
             (uint64_t)rva, ucx_mkey->rkey);
 
-    return UCS_OK == err ? OSHMEM_SUCCESS : OSHMEM_ERROR;
+    return OPAL_LIKELY(UCS_OK == err) ? OSHMEM_SUCCESS : OSHMEM_ERROR;
 }
 
 
