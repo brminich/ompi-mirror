@@ -310,7 +310,7 @@ sshmem_mkey_t *mca_spml_ucx_register(void* addr,
     if (!ucx_mkey) {
         goto error_out;
     }
-        
+
     mkeys[0].spml_context = ucx_mkey;
     err = ucp_mem_map(mca_spml_ucx.ucp_context, 
             &addr, size, 0, &ucx_mkey->mem_h);
@@ -328,6 +328,14 @@ sshmem_mkey_t *mca_spml_ucx_register(void* addr,
                 (unsigned long long)len,
                 0xffff);
         oshmem_shmem_abort(-1);
+    }
+
+    err = ucp_ep_rkey_unpack(mca_spml_ucx.ucp_peers[oshmem_group_self->my_pe].ucp_conn,
+                             mkeys[0].u.data,
+                             &ucx_mkey->rkey);
+    if (UCS_OK != err) {
+        SPML_ERROR("failed to unpack rkey");
+        goto error_unmap;
     }
 
     mkeys[0].len     = len;
@@ -385,8 +393,8 @@ int mca_spml_ucx_get(void *src_addr, size_t size, void *dst_addr, int src)
     }
 
     ucx_mkey = (spml_ucx_mkey_t *)(r_mkey->spml_context);
-    err = ucp_rma_get(mca_spml_ucx.ucp_peers[src].ucp_conn, dst_addr, size, 
-            (uint64_t)rva, ucx_mkey->rkey);
+    err = ucp_get(mca_spml_ucx.ucp_peers[src].ucp_conn, dst_addr, size,
+                  (uint64_t)rva, ucx_mkey->rkey);
 
     return OPAL_LIKELY(UCS_OK == err) ? OSHMEM_SUCCESS : OSHMEM_ERROR;
 }
@@ -409,8 +417,9 @@ int mca_spml_ucx_put(void* dst_addr, size_t size, void* src_addr, int dst)
     }
 
     ucx_mkey = (spml_ucx_mkey_t *)(r_mkey->spml_context);
-    err = ucp_rma_put(mca_spml_ucx.ucp_peers[dst].ucp_conn, src_addr, size, 
-            (uint64_t)rva, ucx_mkey->rkey);
+
+    err = ucp_put(mca_spml_ucx.ucp_peers[dst].ucp_conn, src_addr, size,
+                  (uint64_t)rva, ucx_mkey->rkey);
 
     return OPAL_LIKELY(UCS_OK == err) ? OSHMEM_SUCCESS : OSHMEM_ERROR;
 }
@@ -420,7 +429,7 @@ int mca_spml_ucx_fence(void)
 {
     ucs_status_t err;
 
-    err = ucp_rma_flush(mca_spml_ucx.ucp_worker);
+    err = ucp_flush(mca_spml_ucx.ucp_worker);
     if (UCS_OK != err) {
         SPML_ERROR("fence failed");
          oshmem_shmem_abort(-1);
@@ -433,7 +442,7 @@ int mca_spml_ucx_quiet(void)
 {
     ucs_status_t err;
 
-    err = ucp_rma_flush(mca_spml_ucx.ucp_worker);
+    err = ucp_flush(mca_spml_ucx.ucp_worker);
     if (UCS_OK != err) {
         SPML_ERROR("fence failed");
          oshmem_shmem_abort(-1);
@@ -441,6 +450,7 @@ int mca_spml_ucx_quiet(void)
     }
     return OSHMEM_SUCCESS;
 }
+
 /* blocking receive */
 int mca_spml_ucx_recv(void* buf, size_t size, int src)
 {

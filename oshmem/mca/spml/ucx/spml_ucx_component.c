@@ -118,7 +118,8 @@ static int mca_spml_ucx_component_open(void)
         return OSHMEM_ERROR;
     }
 
-    err = ucp_init(ucp_config, 0, &mca_spml_ucx.ucp_context);
+    err = ucp_init(UCP_FEATURE_RMA|UCP_FEATURE_AMO, 0, ucp_config,
+                   &mca_spml_ucx.ucp_context);
     ucp_config_release(ucp_config);
     if (UCS_OK != err) {
         return OSHMEM_ERROR;
@@ -137,7 +138,8 @@ static int spml_ucx_init(void)
 {
     ucs_status_t err;
 
-    err = ucp_worker_create(mca_spml_ucx.ucp_context, UCS_THREAD_MODE_SINGLE, &mca_spml_ucx.ucp_worker);
+    err = ucp_worker_create(mca_spml_ucx.ucp_context, UCS_THREAD_MODE_SINGLE,
+                            &mca_spml_ucx.ucp_worker);
     if (UCS_OK != err) {
         return OSHMEM_ERROR;
     }
